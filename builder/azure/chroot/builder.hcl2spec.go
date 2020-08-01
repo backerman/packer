@@ -31,6 +31,7 @@ type FlatConfig struct {
 	MountOptions                      []string                           `mapstructure:"mount_options" cty:"mount_options" hcl:"mount_options"`
 	MountPartition                    *string                            `mapstructure:"mount_partition" cty:"mount_partition" hcl:"mount_partition"`
 	MountPath                         *string                            `mapstructure:"mount_path" cty:"mount_path" hcl:"mount_path"`
+	SkipMountRoot                     *bool                              `mapstructure:"skip_mount_root" cty:"skip_mount_root" hcl:"skip_mount_root"`
 	PostMountCommands                 []string                           `mapstructure:"post_mount_commands" cty:"post_mount_commands" hcl:"post_mount_commands"`
 	ChrootMounts                      [][]string                         `mapstructure:"chroot_mounts" cty:"chroot_mounts" hcl:"chroot_mounts"`
 	CopyFiles                         []string                           `mapstructure:"copy_files" cty:"copy_files" hcl:"copy_files"`
@@ -83,6 +84,7 @@ func (*FlatConfig) HCL2Spec() map[string]hcldec.Spec {
 		"mount_options":                   &hcldec.AttrSpec{Name: "mount_options", Type: cty.List(cty.String), Required: false},
 		"mount_partition":                 &hcldec.AttrSpec{Name: "mount_partition", Type: cty.String, Required: false},
 		"mount_path":                      &hcldec.AttrSpec{Name: "mount_path", Type: cty.String, Required: false},
+		"skip_mount_root":                 &hcldec.AttrSpec{Name: "skip_mount_root", Type: cty.Bool, Required: false},
 		"post_mount_commands":             &hcldec.AttrSpec{Name: "post_mount_commands", Type: cty.List(cty.String), Required: false},
 		"chroot_mounts":                   &hcldec.AttrSpec{Name: "chroot_mounts", Type: cty.List(cty.List(cty.String)), Required: false},
 		"copy_files":                      &hcldec.AttrSpec{Name: "copy_files", Type: cty.List(cty.String), Required: false},

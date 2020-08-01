@@ -24,11 +24,18 @@ type StepMountDevice struct {
 	MountOptions   []string
 	MountPartition string
 	MountPath      string
+	SkipMountRoot  bool
 
 	mountPath string
 }
 
 func (s *StepMountDevice) Run(ctx context.Context, state multistep.StateBag) multistep.StepAction {
+	if s.SkipMountRoot {
+		// The user will mount the root device, presumably in pre_mount_commands.
+		log.Printf("Not mounting the root device.")
+		s.mountPath = "" // skips unmount as well
+		return multistep.ActionContinue
+	}
 	ui := state.Get("ui").(packer.Ui)
 	device := state.Get("device").(string)
 	config := state.Get("config").(*Config)

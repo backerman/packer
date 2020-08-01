@@ -67,6 +67,8 @@ type Config struct {
 	// to `/mnt/packer-amazon-chroot-volumes/{{.Device}}`. This is a configuration template where the `.Device`
 	// variable is replaced with the name of the device where the volume is attached.
 	MountPath string `mapstructure:"mount_path"`
+	// If set to `true`, Packer will not attempt to mount the root partition. Defaults to `false`.
+	SkipMountRoot bool `mapstructure:"skip_mount_root"`
 	// As `pre_mount_commands`, but the commands are executed after mounting the root device and before the
 	// extra mount and copy steps. The device and mount path are provided by `{{.Device}}` and `{{.MountPath}}`.
 	PostMountCommands []string `mapstructure:"post_mount_commands"`
@@ -577,6 +579,7 @@ func buildsteps(config Config, info *client.ComputeInfo) []multistep.Step {
 			MountOptions:   config.MountOptions,
 			MountPartition: config.MountPartition,
 			MountPath:      config.MountPath,
+			SkipMountRoot:  config.SkipMountRoot,
 		},
 		&chroot.StepPostMountCommands{
 			Commands: config.PostMountCommands,
