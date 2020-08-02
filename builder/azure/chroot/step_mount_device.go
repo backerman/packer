@@ -9,6 +9,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/hashicorp/packer/common"
@@ -69,7 +70,13 @@ func (s *StepMountDevice) Run(ctx context.Context, state multistep.StateBag) mul
 		return multistep.ActionHalt
 	}
 
-	deviceMount := fmt.Sprintf("%s%s", device, s.MountPartition)
+	var deviceMount string
+	switch runtime.GOOS {
+	case "freebsd":
+		deviceMount = fmt.Sprintf("%sp%s", device, s.MountPartition)
+	default:
+		deviceMount = fmt.Sprintf("%s%s", device, s.MountPartition)
+	}
 
 	state.Put("deviceMount", deviceMount)
 
