@@ -31,6 +31,7 @@ type FlatConfig struct {
 	FromScratch                       *bool                              `mapstructure:"from_scratch" cty:"from_scratch" hcl:"from_scratch"`
 	Source                            *string                            `mapstructure:"source" required:"true" cty:"source" hcl:"source"`
 	CommandWrapper                    *string                            `mapstructure:"command_wrapper" cty:"command_wrapper" hcl:"command_wrapper"`
+	SkipRootMount                     *bool                              `mapstructure:"skip_root_mount" cty:"skip_root_mount" hcl:"skip_root_mount"`
 	PreMountCommands                  []string                           `mapstructure:"pre_mount_commands" cty:"pre_mount_commands" hcl:"pre_mount_commands"`
 	MountOptions                      []string                           `mapstructure:"mount_options" cty:"mount_options" hcl:"mount_options"`
 	MountPartition                    *string                            `mapstructure:"mount_partition" cty:"mount_partition" hcl:"mount_partition"`
@@ -38,6 +39,7 @@ type FlatConfig struct {
 	PostMountCommands                 []string                           `mapstructure:"post_mount_commands" cty:"post_mount_commands" hcl:"post_mount_commands"`
 	ChrootMounts                      [][]string                         `mapstructure:"chroot_mounts" cty:"chroot_mounts" hcl:"chroot_mounts"`
 	CopyFiles                         []string                           `mapstructure:"copy_files" cty:"copy_files" hcl:"copy_files"`
+	CleanupCommands                   []string                           `mapstructure:"cleanup_commands" cty:"cleanup_commands" hcl:"cleanup_commands"`
 	OSDiskSizeGB                      *int32                             `mapstructure:"os_disk_size_gb" cty:"os_disk_size_gb" hcl:"os_disk_size_gb"`
 	OSDiskStorageAccountType          *string                            `mapstructure:"os_disk_storage_account_type" cty:"os_disk_storage_account_type" hcl:"os_disk_storage_account_type"`
 	OSDiskCacheType                   *string                            `mapstructure:"os_disk_cache_type" cty:"os_disk_cache_type" hcl:"os_disk_cache_type"`
@@ -86,6 +88,7 @@ func (*FlatConfig) HCL2Spec() map[string]hcldec.Spec {
 		"from_scratch":                    &hcldec.AttrSpec{Name: "from_scratch", Type: cty.Bool, Required: false},
 		"source":                          &hcldec.AttrSpec{Name: "source", Type: cty.String, Required: false},
 		"command_wrapper":                 &hcldec.AttrSpec{Name: "command_wrapper", Type: cty.String, Required: false},
+		"skip_root_mount":                 &hcldec.AttrSpec{Name: "skip_root_mount", Type: cty.Bool, Required: false},
 		"pre_mount_commands":              &hcldec.AttrSpec{Name: "pre_mount_commands", Type: cty.List(cty.String), Required: false},
 		"mount_options":                   &hcldec.AttrSpec{Name: "mount_options", Type: cty.List(cty.String), Required: false},
 		"mount_partition":                 &hcldec.AttrSpec{Name: "mount_partition", Type: cty.String, Required: false},
@@ -93,6 +96,7 @@ func (*FlatConfig) HCL2Spec() map[string]hcldec.Spec {
 		"post_mount_commands":             &hcldec.AttrSpec{Name: "post_mount_commands", Type: cty.List(cty.String), Required: false},
 		"chroot_mounts":                   &hcldec.AttrSpec{Name: "chroot_mounts", Type: cty.List(cty.List(cty.String)), Required: false},
 		"copy_files":                      &hcldec.AttrSpec{Name: "copy_files", Type: cty.List(cty.String), Required: false},
+		"cleanup_commands":                &hcldec.AttrSpec{Name: "cleanup_commands", Type: cty.List(cty.String), Required: false},
 		"os_disk_size_gb":                 &hcldec.AttrSpec{Name: "os_disk_size_gb", Type: cty.Number, Required: false},
 		"os_disk_storage_account_type":    &hcldec.AttrSpec{Name: "os_disk_storage_account_type", Type: cty.String, Required: false},
 		"os_disk_cache_type":              &hcldec.AttrSpec{Name: "os_disk_cache_type", Type: cty.String, Required: false},

@@ -1,0 +1,42 @@
+{
+  "variables": {},
+  "builders": [
+    {
+      "type": "azure-chroot",
+      "from_scratch": true,
+      "image_resource_id": "/subscriptions/{{vm `subscription_id`}}/resourceGroups/{{vm `resource_group`}}/providers/Microsoft.Compute/images/freebsd-{{timestamp}}",
+      "os_disk_size_gb": 8,
+      "os_disk_storage_account_type": "Premium_LRS",
+      "skip_root_mount": true,
+      "mount_path": "/tmp/packer-chroot",
+      "chroot_mounts": [
+        ["devfs", "devfs", "/dev"],
+        ["procfs", "procfs", "/proc"]
+      ],
+      "pre_mount_commands": [
+        "sed -e 's/@@DISK@@/{{split .Device \"/\" 2}}/' < freebsd-zfs-files/bsdinstall > /tmp/bsdinstall_packer_foo",
+        "mkdir -p /usr/freebsd-dist",
+        "env BSDINSTALL_DISTSITE=https://download.freebsd.org/ftp/releases/amd64/12.1-RELEASE/ DISTRIBUTIONS=\"base.txz doc.txz kernel.txz src.txz\" bsdinstall distfetch",
+        "kldload -n linux64",
+        "bsdinstall script /tmp/bsdinstall_packer_foo",
+        "zpool import -R /tmp/packer-chroot -N zroot",
+        "zfs mount zroot/ROOT/default",
+        "zfs mount -a"
+      ],
+      "cleanup_commands": [
+        "zpool export zroot"
+      ]
+    }
+  ],
+  "provisioners": [
+    {
+      "inline": [
+        "env ASSUME_ALWAYS_YES=YES pkg bootstrap",
+        "env ASSUME_ALWAYS_YES=YES pkg install azure-agent",
+        "sysrc waagent_enable=YES"
+      ],
+      "inline_shebang": "/bin/sh -x",
+      "type": "shell"
+    }
+  ]
+}

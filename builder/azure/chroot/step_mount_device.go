@@ -24,8 +24,9 @@ type StepMountDevice struct {
 	MountOptions   []string
 	MountPartition string
 	MountPath      string
-
-	mountPath string
+	SkipMount      bool
+	mountPath      string
+	hasMounted     bool
 }
 
 func (s *StepMountDevice) Run(ctx context.Context, state multistep.StateBag) multistep.StepAction {
@@ -61,6 +62,16 @@ func (s *StepMountDevice) Run(ctx context.Context, state multistep.StateBag) mul
 		state.Put("error", err)
 		ui.Error(err.Error())
 		return multistep.ActionHalt
+	}
+
+	// Set the mount path so we remember to unmount it later
+	s.mountPath = mountPath
+	state.Put("mount_path", s.mountPath)
+	state.Put("mount_device_cleanup", s)
+
+	// And move to next step if the user will be handling the mount.
+	if s.SkipMount {
+		return multistep.ActionContinue
 	}
 
 	var deviceMount string
@@ -100,11 +111,7 @@ func (s *StepMountDevice) Run(ctx context.Context, state multistep.StateBag) mul
 		ui.Error(err.Error())
 		return multistep.ActionHalt
 	}
-
-	// Set the mount path so we remember to unmount it later
-	s.mountPath = mountPath
-	state.Put("mount_path", s.mountPath)
-	state.Put("mount_device_cleanup", s)
+	s.hasMounted = true
 
 	return multistep.ActionContinue
 }
@@ -117,7 +124,7 @@ func (s *StepMountDevice) Cleanup(state multistep.StateBag) {
 }
 
 func (s *StepMountDevice) CleanupFunc(state multistep.StateBag) error {
-	if s.mountPath == "" {
+	if s.mountPath == "" || !s.hasMounted {
 		return nil
 	}
 

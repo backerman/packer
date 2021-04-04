@@ -54,6 +54,9 @@ type Config struct {
 	// a command with sudo or so on. This is a configuration template where the `.Command` variable
 	// is replaced with the command to be run. Defaults to `{{.Command}}`.
 	CommandWrapper string `mapstructure:"command_wrapper"`
+	// Skip implicitly mounting and unmounting the root volume. This option can be used for filesystems that
+	// do not use the `mount` command (e.g. ZFS).
+	SkipRootMount bool `mapstructure:"skip_root_mount"`
 	// A series of commands to execute after attaching the root volume and before mounting the chroot.
 	// This is not required unless using `from_scratch`. If so, this should include any partitioning
 	// and filesystem creation commands. The path to the device is provided by `{{.Device}}`.
@@ -79,6 +82,9 @@ type Config struct {
 	// provisioning. Defaults to `/etc/resolv.conf` so that DNS lookups work. Pass an empty list to skip copying
 	// `/etc/resolv.conf`. You may need to do this if you're building an image that uses systemd.
 	CopyFiles []string `mapstructure:"copy_files"`
+	// As `pre_mount_commands`, but the commands are executed immediately before the disk is detached.
+	// If `skip_root_mount` is passed, this can be used to explicitly specify unmount commands.
+	CleanupCommands []string `mapstructure:"cleanup_commands"`
 
 	// Try to resize the OS disk to this size on the first copy. Disks can only be englarged. If not specified,
 	// the disk will keep its original size. Required when using `from_scratch`
@@ -571,14 +577,20 @@ func buildsteps(config Config, info *client.ComputeInfo) []multistep.Step {
 	}
 
 	addSteps(
-		&StepAttachDisk{}, // uses os_disk_resource_id and sets 'device' in stateBag
+		&StepAttachDisk{
+			CleanupCommands: config.CleanupCommands,
+		}, // uses os_disk_resource_id and sets 'device' in stateBag
 		&chroot.StepPreMountCommands{
 			Commands: config.PreMountCommands,
 		},
+		// The mount device step is run regardless of whether the root device is in
+		// fact mounted in it; this is because it modifies the state in ways that
+		// later steps expect.
 		&StepMountDevice{
 			MountOptions:   config.MountOptions,
 			MountPartition: config.MountPartition,
 			MountPath:      config.MountPath,
+			SkipMount:      config.SkipRootMount,
 		},
 		&chroot.StepPostMountCommands{
 			Commands: config.PostMountCommands,
@@ -592,7 +604,6 @@ func buildsteps(config Config, info *client.ComputeInfo) []multistep.Step {
 		&chroot.StepChrootProvision{},
 		&chroot.StepEarlyCleanup{},
 	)
-
 	if config.ImageResourceID != "" {
 		addSteps(&StepCreateImage{
 			ImageResourceID:          config.ImageResourceID,

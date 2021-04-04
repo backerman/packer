@@ -6,6 +6,8 @@ import (
 	"log"
 	"time"
 
+	"github.com/hashicorp/packer-plugin-sdk/chroot"
+	"github.com/hashicorp/packer-plugin-sdk/common"
 	"github.com/hashicorp/packer-plugin-sdk/multistep"
 	packersdk "github.com/hashicorp/packer-plugin-sdk/packer"
 	"github.com/hashicorp/packer/builder/azure/common/client"
@@ -14,7 +16,12 @@ import (
 var _ multistep.Step = &StepAttachDisk{}
 
 type StepAttachDisk struct {
-	attached bool
+	attached        bool
+	CleanupCommands []string
+}
+
+type cleanupCommandsData struct {
+	Device string
 }
 
 func (s *StepAttachDisk) Run(ctx context.Context, state multistep.StateBag) multistep.StepAction {
@@ -64,12 +71,26 @@ func (s *StepAttachDisk) Cleanup(state multistep.StateBag) {
 }
 
 func (s *StepAttachDisk) CleanupFunc(state multistep.StateBag) error {
-
 	if s.attached {
 		azcli := state.Get("azureclient").(client.AzureClientSet)
 		ui := state.Get("ui").(packersdk.Ui)
 		diskset := state.Get(stateBagKey_Diskset).(Diskset)
 		diskResourceID := diskset.OS().String()
+
+		if len(s.CleanupCommands) > 0 {
+			config := state.Get("config").(*Config)
+			device := state.Get("device").(string)
+			ictx := config.GetContext()
+			ictx.Data = &cleanupCommandsData{Device: device}
+			wrappedCommand := state.Get("wrappedCommand").(common.CommandWrapper)
+
+			ui.Say("Running cleanup commands...")
+			if err := chroot.RunLocalCommands(s.CleanupCommands, wrappedCommand, ictx, ui); err != nil {
+				state.Put("error", err)
+				ui.Error(err.Error())
+				return err
+			}
+		}
 
 		ui.Say(fmt.Sprintf("Detaching disk '%s'", diskResourceID))
 

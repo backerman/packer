@@ -1,0 +1,70 @@
+# Install FreeBSD into a data disk on Azure.
+
+# The ZFS-specific variables must be exported.
+export ZFSBOOT_VDEV_TYPE=stripe
+export ZFSBOOT_DISKS=@@DISK@@
+export ZFSBOOT_POOL_NAME=zroot
+export ZFSBOOT_SWAP_SIZE=0
+export nonInteractive="YES"
+
+DISTRIBUTIONS="base.txz doc.txz kernel.txz src.txz"
+
+#!/bin/sh -e
+
+# Install all OS patches.
+env PAGER=cat freebsd-update \
+    --not-running-from-cron \
+    --currently-running 12.1-RELEASE \
+    fetch install
+
+# Configure networking.
+sysrc ifconfig_hn0=SYNCDHCP
+sysrc sshd_enable=YES
+sysrc hostname=localhost.localdomain
+# Turn off DNS lookups in sshd.
+sed -i '' -e 's/^#UseDNS yes/UseDNS no/' /etc/ssh/sshd_config
+
+# Don't spawn all the terminals, since we have no console.
+sed -i '' -e '/^ttyv[1-9]/s/^/#/' /etc/ttys
+
+# Speed up boot.
+echo >> /etc/sysctl.conf <<EOM
+debug.trace_on_panic="1"
+debug.debugger_on_panic="0"
+kern.panic_reboot_wait_time="0"
+EOM
+sysrc -f /boot/loader.conf autoboot_delay=-1
+
+# Enable serial console.
+sysrc -f /boot/loader.conf console="comconsole"
+sysrc -f /boot/loader.conf comconsole_speed="115200"
+
+# Java requires fdescfs and procfs. Linux compatibility (for waagent)
+# requires the other stuff.
+cat >> /etc/fstab <<EOM
+fdesc   /dev/fd         fdescfs         rw      0       0
+proc    /proc           procfs          rw      0       0
+linprocfs   /compat/linux/proc  linprocfs       rw      0       0
+linsysfs    /compat/linux/sys   linsysfs        rw      0       0
+tmpfs    /compat/linux/dev/shm  tmpfs   rw,mode=1777    0       0
+EOM
+
+# Configure Azure agent.
+mkdir -p /usr/local/etc
+cat > /usr/local/etc/waagent.conf <<EOM
+Provisioning.Enabled=y
+Extensions.Enabled=y
+Provisioning.UseCloudInit=n
+Provisioning.DeleteRootPassword=y
+Provisioning.RegenerateSshHostKeyPair=y
+Provisioning.SshHostKeyPairType=auto
+Provisioning.MonitorHostName=y
+Provisioning.DecodeCustomData=n
+Provisioning.ExecuteCustomData=n
+ResourceDisk.Format=n
+ResourceDisk.EnableSwap=n
+Logs.Verbose=n
+OS.SshDir=/etc/ssh
+OS.PasswordPath=/etc/master.passwd
+OS.SudoersDir=/usr/local/etc/sudoers.d
+EOM
