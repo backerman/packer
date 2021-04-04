@@ -6,6 +6,9 @@
   a command with sudo or so on. This is a configuration template where the `.Command` variable
   is replaced with the command to be run. Defaults to `{{.Command}}`.
 
+- `skip_root_mount` (bool) - Skip implicitly mounting and unmounting the root volume. This option can be used for filesystems that
+  do not use the `mount` command (e.g. ZFS).
+
 - `pre_mount_commands` ([]string) - A series of commands to execute after attaching the root volume and before mounting the chroot.
   This is not required unless using `from_scratch`. If so, this should include any partitioning
   and filesystem creation commands. The path to the device is provided by `{{.Device}}`.
@@ -30,6 +33,9 @@
 - `copy_files` ([]string) - Paths to files on the running Azure instance that will be copied into the chroot environment prior to
   provisioning. Defaults to `/etc/resolv.conf` so that DNS lookups work. Pass an empty list to skip copying
   `/etc/resolv.conf`. You may need to do this if you're building an image that uses systemd.
+
+- `cleanup_commands` ([]string) - As `pre_mount_commands`, but the commands are executed immediately before the disk is detached.
+  If `skip_root_mount` is passed, this can be used to explicitly specify unmount commands.
 
 - `os_disk_size_gb` (int32) - Try to resize the OS disk to this size on the first copy. Disks can only be englarged. If not specified,
   the disk will keep its original size. Required when using `from_scratch`
